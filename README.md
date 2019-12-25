@@ -8,6 +8,8 @@ The biggest difference between original implementation and this repository, asid
 
 This repository is tested on Windows and Ubuntu on PyTorch 1.2, 1.3 and 13.1, installed from pip and built from source.
 
+Validation results:
+
 ## Setup
 
 ## Prediction
