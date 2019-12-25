@@ -18,6 +18,10 @@ pip install -r requirements.txt
 
 ## Prediction
 
-## Training
+Please refer to prediction_example.ipynb
 
 ## Evaluation
+
+## Training
+Coming soon!
+
