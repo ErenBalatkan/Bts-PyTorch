@@ -11,6 +11,10 @@ This repository is tested on Windows and Ubuntu on PyTorch 1.2, 1.3 and 13.1, in
 Validation results:
 
 ## Setup
+```
+pip install -r requirements.txt
+```
+
 
 ## Prediction
 
