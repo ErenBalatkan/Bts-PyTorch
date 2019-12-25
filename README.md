@@ -6,7 +6,7 @@ This repository contains the unofficial PyTorch implementation of From Big to Sm
 
 The biggest difference between original implementation and this repository, aside from being PyTorch based that is, is that this implementation uses Numba library for Cuda accelerated implementation Local Planar Guidance layer. This saves us from bothersome setup process, but it also requires you to have a GPU with Cuda support.
 
-This repository is tested on both Windows and Ubuntu on PyTorch 1.2, 1.3 and 13.1, installed from pip and built from source.
+This repository is tested on Windows and Ubuntu on PyTorch 1.2, 1.3 and 13.1, installed from pip and built from source.
 
 ## Setup
 
