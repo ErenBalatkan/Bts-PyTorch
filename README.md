@@ -21,11 +21,11 @@ pip install -r requirements.txt
 Please refer to prediction_example.ipynb
 
 ## Dataset Preperation
-Coming soon!
+Coming very soon!
 
 ## Evaluation
-Coming soon!
+Coming very soon!
 
 ## Training
-Coming soon!
+Coming very soon!
 
