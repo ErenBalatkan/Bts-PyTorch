@@ -36,10 +36,16 @@ pip install -r requirements.txt
 Please refer to prediction_example.ipynb
 
 ## Dataset Preperation
-Coming very soon!
+Kitti:
+Preperation process is same as the official tensorflow implementation. But use "kitti_archives_to_download.txt" provided in this reposity which contains more runs.
 
 ## Evaluation
-Coming very soon!
+Change following lines at the start of the test.py
+```
+model_path = "models/btspytorch"
+dataset_path = "e://Code/Tez/bts_eren/kitti"
+```
+Run test.py
 
 ## Training
 Coming very soon!
