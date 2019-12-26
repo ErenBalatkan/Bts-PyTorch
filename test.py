@@ -7,7 +7,7 @@ import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 
-model_path = "models/Balatkan/bts_model_epoch_49"
+model_path = "models/btspytorch"
 dataset_path = "e://Code/Tez/bts_eren/kitti"
 
 MAKE_VIDEO = True
