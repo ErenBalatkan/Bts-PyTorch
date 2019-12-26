@@ -24,6 +24,10 @@ As can be seen on table above, this implementation performs slightly worse than 
 ```
 pip install -r requirements.txt
 ```
+Download pretrained model from following link and put it under models directory
+https://drive.google.com/file/d/1OcY7-j7yp8yh47X-A9-ZF-ulxHSincFi/view?usp=sharing
+
+*You need a GPU with CUDA support to run this implementation*
 
 
 ## Prediction
