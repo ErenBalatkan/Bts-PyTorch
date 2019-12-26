@@ -17,6 +17,9 @@ Kitti Validation results:
 
 As can be seen on table above, this implementation performs slightly worse than original implementation, which is very likely due some additional hyper-parameter tuning done by authors, due computational reasons I couldnt fine tine this model further.
 
+## Videos
+
+
 ## Setup
 ```
 pip install -r requirements.txt
@@ -35,4 +38,6 @@ Coming very soon!
 
 ## Training
 Coming very soon!
+
+Takes around 100 hours to train on GTX 1080.
 
