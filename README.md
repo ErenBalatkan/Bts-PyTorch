@@ -15,7 +15,7 @@ Kitti Validation results:
 | BTS - PyTorch  | 10.80  | 3.08  | 0.11  | 0.07  | 0.32  |
 | BTS - Official  | 9.16  | 2.79  | 0.09  | 0.06  | 0.25  |
 
-As can be seen on table above, this implementation performs slightly worse than original implementation. Which is very likely due some additional hyper-parameter tuning done by authors, due computational reasons I couldnt fine tine this model much.
+As can be seen on table above, this implementation performs slightly worse than original implementation, which is very likely due some additional hyper-parameter tuning done by authors, due computational reasons I couldnt fine tine this model further.
 
 ## Setup
 ```
