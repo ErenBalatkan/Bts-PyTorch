@@ -48,7 +48,11 @@ dataset_path = "e://Code/Tez/bts_eren/kitti"
 Run test.py
 
 ## Training
-Coming very soon!
+Change following lines at the start of the Train.py
+```
+experiment_name = "Balatkan"  # This determines folder names used for saving tensorboard logs and model files
+dataset_path = "e://Code/Tez/bts_eren/kitti"
+```
 
 Takes around 100 hours to train on GTX 1080.
 
