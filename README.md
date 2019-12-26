@@ -9,11 +9,12 @@ The biggest difference between original implementation and this repository, asid
 This repository is tested on Windows and Ubuntu on PyTorch 1.2, 1.3 and 13.1, installed from pip and built from source.
 
 Kitti Validation results:
+
 | Model  | Silog | rmse | rmse log | abs relative | sqrt relative |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-| BTS - PyTorch  | Content Cell  | Content Cell  | Content Cell  | Content Cell  | Content Cell  |
+| BTS - PyTorch  | 10.80  | 3.08  | 0.11  | 0.07  | 0.32  |
 | BTS - Official  | Content Cell  | Content Cell  | Content Cell  | Content Cell  | Content Cell  |
-| Ratio(Lower is better) | Content Cell  | Content Cell  | Content Cell  | Content Cell  | Content Cell  |
+| Ratio (Lower is better) | Content Cell  | Content Cell  | Content Cell  | Content Cell  | Content Cell  |
 
 ## Setup
 ```
