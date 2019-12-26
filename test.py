@@ -1,10 +1,8 @@
 
 import KittiDataLoader
 import BTS
-import os
 import torch
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
 
 model_path = "models/btspytorch"
@@ -15,12 +13,9 @@ video_save_path = "video.avi"
 
 DISPLAY_VIDEO = True
 
-
 dataloader = KittiDataLoader.KittiDataset(dataset_path, is_test=True)
 model = BTS.BtsController()
 model.load_model(model_path)
-
-
 
 
 def Unnormalize(tensor, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
@@ -72,7 +67,7 @@ for idx, item in enumerate(dataloader):
     im_vis = np.asarray((Unnormalize(item["image"])*255).transpose(0, 1).transpose(1, 2), np.uint8)
     result = np.append(result_vis, im_vis, axis=0)
     if MAKE_VIDEO:
-        video.write(result)
+        video.write(cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
     if DISPLAY_VIDEO:
         cv2.imshow("a", cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
         cv2.waitKey(1)
