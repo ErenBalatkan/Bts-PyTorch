@@ -17,6 +17,12 @@ activation_fn = nn.ELU()
 MAX_DEPTH = 83
 DEPTH_OFFSET = 0.01 # This is used for ensuring depth prediction gets into positive range
 
+USE_APEX = False  # Enable if you have GPU with Tensor Cores, otherwise doesnt really bring any benefits.
+APEX_OPT_LEVEL = "O2"
+
+if USE_APEX:
+    import apex
+
 
 class UpscaleLayer(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -252,6 +258,8 @@ class LPGBlock(nn.Module):
     def forward(self, input):
         for reduction_idx in range(len(self.reductions)):
             reduction = self.reductions[reduction_idx]
+            if USE_APEX:
+                reduction = reduction.half()
             input = activation_fn(reduction(input))
 
         plane_parameters = torch.zeros_like(input)
@@ -273,7 +281,10 @@ class LPGBlock(nn.Module):
 
         plane_parameters[:, 0:3, :, :] = F.normalize(plane_parameters.clone()[:, 0:3, :, :], 2, 1)
 
-        depth = self.LPGLayer(plane_parameters, self.scale)
+        depth = self.LPGLayer(plane_parameters.float(), self.scale)
+
+        if USE_APEX:
+            depth = depth.half()
 
         return depth
 
@@ -401,8 +412,14 @@ class SilogLoss(nn.Module):
 
 
 class BtsController:
-    def __init__(self, log_directory='run_1', logs_folder='tensorboard', backprop_frequency=8):
+    def __init__(self, log_directory='run_1', logs_folder='tensorboard', backprop_frequency=1):
         self.bts = bts_eren().float().cuda()
+        self.optimizer = optim.Adam(self.bts.parameters(), 1e-4)
+
+        if USE_APEX:
+            self.bts, self.optimizer = apex.amp.initialize(self.bts, self.optimizer, opt_level=APEX_OPT_LEVEL)
+
+        self.bts = torch.nn.DataParallel(self.bts)
 
         self.backprop_frequency = backprop_frequency
 
@@ -410,7 +427,7 @@ class BtsController:
         self.writer = SummaryWriter(log_path)
 
         self.criterion = SilogLoss()
-        self.optimizer = optim.Adam(self.bts.parameters(), 1e-4)
+
         self.learning_rate_scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, 0.97)
 
         self.current_epoch = 0
@@ -447,7 +464,12 @@ class BtsController:
         # print("expecteed output:", tensor_output.shape)
         # print("model_output:", model_output.shape)
         loss = self.criterion(model_output, tensor_output) * 1/self.backprop_frequency
-        loss.backward()
+
+        if USE_APEX:
+            with apex.amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                scaled_loss.backward()
+        else:
+            loss.backward()
         # loss = torch.nn.functional.mse_loss(model_output, tensor_output)
 
         if self.current_step % self.backprop_frequency == 0:  # Make update once every x steps
@@ -474,7 +496,7 @@ class BtsController:
         self.current_step += 1
 
     def save_model(self, path):
-        torch.save({
+        save_dict = {
             'epoch': self.current_epoch,
             'model_state_dict': self.bts.state_dict(),
             "dfe_state_dict": self.bts.dense_feature_extractor.state_dict(),
@@ -482,10 +504,20 @@ class BtsController:
             "scheduler_state_dict": self.learning_rate_scheduler.state_dict(),
             'loss': self.last_loss,
             "last_step": self.current_step
-        }, path)
+        }
+        if USE_APEX:
+            save_dict["amp"] = apex.amp.state_dict()
+            save_dict["opt_level"] = APEX_OPT_LEVEL
+
+        torch.save(save_dict, path)
 
     def load_model(self, path):
         dict = torch.load(path)
+
+        if USE_APEX:
+            saved_opt_level = dict["opt_level"]
+            self.bts, self.optimizer = apex.amp.initialize(self.bts, self.optimizer, opt_level=saved_opt_level)
+            apex.amp.load_state_dict(dict["amp"])
 
         self.current_epoch = dict["epoch"]
         self.bts.load_state_dict(dict["model_state_dict"])
@@ -493,6 +525,7 @@ class BtsController:
         self.bts = self.bts.float().cuda()
 
         self.optimizer.load_state_dict(dict["optimizer_state_dict"])
+
         self.learning_rate_scheduler.load_state_dict(dict["scheduler_state_dict"])
         self.last_loss = dict["loss"]
         self.current_step = dict["last_step"]
