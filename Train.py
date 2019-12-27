@@ -4,7 +4,7 @@ import os
 import torch
 
 experiment_name = "Pretrained"  # This determines folder names used for saving tensorboard logs and model files
-dataset_path = "/media/navhkrin/Eren/Code/Tez/bts_eren/kitti"
+dataset_path = "e:/Code/Tez/bts_eren/kitti"
 
 continue_training = False
 total_epochs = 50
