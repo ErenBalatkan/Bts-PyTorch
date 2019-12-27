@@ -7,7 +7,7 @@ import albumentations as A
 
 
 class KittiDataset(Dataset):
-    def __init__(self, dataset_folder="e://Code/Tez/bts_eren/kitti", is_test=False):
+    def __init__(self, dataset_folder, is_test=False):
         self.is_test = is_test
 
         self.transforms = A.Compose([
@@ -120,6 +120,6 @@ class KittiDataset(Dataset):
         return self.total_len
 
 
-def KittiDataLoader(batch_size):
-    dataset = KittiDataset()
+def KittiDataLoader(batch_size, dataset_folder):
+    dataset = KittiDataset(dataset_folder)
     return torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)

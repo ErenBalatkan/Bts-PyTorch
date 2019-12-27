@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 model_path = "models/btspytorch"
-dataset_path = "e://Code/Tez/bts_eren/kitti"
+dataset_path = "/media/navhkrin/Eren/Code/Tez/bts_eren/kitti"
 
 MAKE_VIDEO = True
 video_save_path = "video.avi"
