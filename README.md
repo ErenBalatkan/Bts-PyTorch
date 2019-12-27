@@ -19,7 +19,7 @@ As can be seen on table above, this implementation performs slightly worse than 
 
 ## Videos
 
-[![Screenshot](https://i9.ytimg.com/vi/ekezJiGaiQk/mq3.jpg?sqp=CI2jlPAF&rs=AOn4CLAQRHDLNcOivR8lG2_4L8vAuBmUjQ)](https://youtu.be/ekezJiGaiQk)
+[![Screenshot](https://i.ytimg.com/vi/ekezJiGaiQk/hqdefault.jpg?sqp=-oaymwEZCNACELwBSFXyq4qpAwsIARUAAIhCGAFwAQ==&rs=AOn4CLC9PTHPb2ykWP6x6HnV7tGOxfTJrw)](https://youtu.be/ekezJiGaiQk)
 
 ## Setup
 ```
