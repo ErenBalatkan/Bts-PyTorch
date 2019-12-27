@@ -4,17 +4,17 @@ import os
 import torch
 
 experiment_name = "Balatkan"  # This determines folder names used for saving tensorboard logs and model files
-dataset_path = "e://Code/Tez/bts_eren/kitti"
+dataset_path = "/media/navhkrin/Eren/Code/Tez/bts_eren/kitti"
 
 continue_training = False
 total_epochs = 50
 
-# This repository uses gradient accumilation to support bigger batch sizes then what
-# would fit into memory, effective_batch_size determines total batch size with accumilation.
+# This repository uses gradient accumulation to support bigger batch sizes then what
+# would fit into memory, effective_batch_size determines total batch size with accumulation.
 # batch size represents running batch size
-# In example of effective batch size 16 and batch size of 2, batches will be accumilated 8 times, resulting in effective
-# batch size of 16
-effective_batch_size = 16
+# In example of effective batch size 4 and batch size of 2, batches will be accumulated 2 times, resulting in effective
+# batch size of 4
+effective_batch_size = 4
 batch_size = 2
 
 dataloader = KittiDataLoader.KittiDataLoader(batch_size, dataset_path)
@@ -40,10 +40,11 @@ old_time = time.time()
 
 for i in range(start_epoch, 50):
     for i_batch, sample_batched in enumerate(dataloader):
-        print("Pass Time:", time.time() - old_time)
-        old_time = time.time()
         img_inputs, img_labels = sample_batched["image"], sample_batched["label"]
         model.run_train_step(img_inputs, img_labels)
+
+    print("Epoch Time:", (time.time() - old_time)/60)
+    old_time = time.time()
 
     model.current_epoch = i
     model.save_model(os.path.join(saved_models_path, "bts_model_epoch_"+str(i)))

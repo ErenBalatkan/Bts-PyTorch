@@ -40,12 +40,12 @@ Kitti:
 Preperation process is same as the official tensorflow implementation. But use "kitti_archives_to_download.txt" provided in this reposity which contains more runs.
 
 ## Evaluation
-Change following lines at the start of the test.py
+Change following lines at the start of the Test.py
 ```
 model_path = "models/btspytorch"
 dataset_path = "e://Code/Tez/bts_eren/kitti"
 ```
-Run test.py
+Run Test.py
 
 ## Training
 Change following lines at the start of the Train.py
