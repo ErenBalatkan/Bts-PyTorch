@@ -3,7 +3,7 @@ import BTS
 import os
 import torch
 
-experiment_name = "Pretrained"  # This determines folder names used for saving tensorboard logs and model files
+experiment_name = "BTS_Testt7"  # This determines folder names used for saving tensorboard logs and model files
 dataset_path = "e:/Code/Tez/bts_eren/kitti"
 
 continue_training = False
@@ -40,14 +40,15 @@ old_time = time.time()
 
 for i in range(start_epoch, 50):
     for i_batch, sample_batched in enumerate(dataloader):
-        img_inputs, img_labels = sample_batched["image"], sample_batched["label"]
-        model.run_train_step(img_inputs, img_labels)
+        img_inputs, img_labels, img_focals = sample_batched["image"], sample_batched["label"], sample_batched["focal_length"]
+        model.run_train_step(img_inputs, img_labels, img_focals)
 
         if i_batch % 100 == 0:
-            print("100 Pass Time:", (time.time() - old_time))
+            print("100 Iteration Pass Time: %.2f Epoch progress: %.2f" % ((time.time() - old_time), 100 * i_batch/len(dataloader)))
             old_time = time.time()
 
 
+    print("Epoch :", i)
     model.learning_rate_scheduler.step()
     model.current_epoch = i
     model.save_model(os.path.join(saved_models_path, "bts_model_epoch_"+str(i)))

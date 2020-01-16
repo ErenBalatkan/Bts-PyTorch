@@ -5,8 +5,8 @@ import torch
 import cv2
 import numpy as np
 
-model_path = "models/btspytorch"
-dataset_path = "/media/navhkrin/Eren/Code/Tez/bts_eren/kitti"
+model_path = "models/BTS_PyTorch4/bts_model_epoch_20"
+dataset_path = "e:/Code/Tez/bts_eren/kitti"
 
 MAKE_VIDEO = True
 video_save_path = "video.avi"
@@ -57,7 +57,7 @@ last_idx = 0
 for idx, item in enumerate(dataloader):
     if (item is None):
         break
-    result_raw = model.predict(item["image"])
+    result_raw = model.predict(item["image"], item["focal_length"])
 
     last_idx = idx
     label = item["label"][0]

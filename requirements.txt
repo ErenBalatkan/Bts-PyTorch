@@ -1,5 +1,4 @@
 torch
 numpy
-numba
 cv2
 albumentations
