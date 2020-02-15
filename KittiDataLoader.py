@@ -4,6 +4,7 @@ import os
 import torch
 from torch.utils.data import Dataset, DataLoader
 import albumentations as A
+from PIL import Image
 
 
 class KittiDataset(Dataset):
@@ -88,11 +89,12 @@ class KittiDataset(Dataset):
 
     def load_label_img(self, drive_path, drive_img):
         img_path = os.path.join(self.drive_labels_path, drive_path, self.label_images_path, drive_img)
-        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        img = np.expand_dims(img, axis=2)
+
+        depth_map = np.asarray(Image.open(img_path), np.float32)
+        depth_map = np.expand_dims(depth_map, axis=2) / 256.0
 
         self.last_input_path = img_path
-        return img
+        return depth_map
 
     def load_input_img(self, drive_path, drive_img):
         drive = drive_path.split("_drive_")[0]
@@ -140,6 +142,6 @@ class KittiDataset(Dataset):
         return self.total_len
 
 
-def KittiDataLoader(batch_size, dataset_folder):
-    dataset = KittiDataset(dataset_folder)
+def KittiDataLoader(batch_size, dataset_folder, is_test=False):
+    dataset = KittiDataset(dataset_folder, is_test)
     return torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)

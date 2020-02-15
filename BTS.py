@@ -19,7 +19,8 @@ DEPTH_OFFSET = 0.1 # This is used for ensuring depth prediction gets into positi
 USE_APEX = False  # Enable if you have GPU with Tensor Cores, otherwise doesnt really bring any benefits.
 APEX_OPT_LEVEL = "O2"
 
-BATCH_NORM_MOMENTUM = 0.01
+BATCH_NORM_MOMENTUM = 0.005
+ENABLE_BIAS = True
 
 device = torch.device("cpu")
 if torch.cuda.is_available() :
@@ -32,7 +33,7 @@ if USE_APEX:
 class UpscaleLayer(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(UpscaleLayer, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, 3, padding=1)
+        self.conv = nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=ENABLE_BIAS)
         self.bn = nn.BatchNorm2d(out_channels, momentum=BATCH_NORM_MOMENTUM)
 
     def forward(self, input):
@@ -46,12 +47,11 @@ class UpscaleBlock(nn.Module):
     def __init__(self, in_channels, skip_channels, out_channels):
         super(UpscaleBlock, self).__init__()
         self.uplayer = UpscaleLayer(in_channels, out_channels)
-        self.conv = nn.Conv2d(out_channels+skip_channels, out_channels, 3, padding=1)
+        self.conv = nn.Conv2d(out_channels+skip_channels, out_channels, 3, padding=1, bias=ENABLE_BIAS)
         self.bn2 = nn.BatchNorm2d(out_channels, BATCH_NORM_MOMENTUM)
 
     def forward(self, input_j):
         input, skip = input_j
-
         input = self.uplayer(input)
         cat = torch.cat((input, skip), 1)
         input = activation_fn(self.conv(cat))
@@ -91,10 +91,8 @@ class AtrousBlock(nn.Module):
 
         input = self.conv1(input.relu())
         input = self.norm1(input)
-
         input = self.atrous_conv(input.relu())
         input = self.norm2(input)
-
         return input
 
 
@@ -108,7 +106,7 @@ class ASSPBlock(nn.Module):
         self.atrous_conv_r18 = AtrousBlock(cat_filters + atrous_filters*3, atrous_filters, 18)
         self.atrous_conv_r24 = AtrousBlock(cat_filters + atrous_filters*4, atrous_filters, 24)
 
-        self.conv = nn.Conv2d(5 * atrous_filters + cat_filters, atrous_filters, 3, 1, 1)
+        self.conv = nn.Conv2d(5 * atrous_filters + cat_filters, atrous_filters, 3, 1, 1, bias=ENABLE_BIAS)
 
     def forward(self, input):
         input, cat = input
@@ -166,15 +164,15 @@ class Reduction(nn.Module):
         for i in range(reduction_count):
             if i != reduction_count-1:
                 self.reductions.add_module("1x1_reduc_%d_%d" % (scale, i), nn.Sequential(
-                    nn.Conv2d(int(input_filters / math.pow(2, i)), int(input_filters / math.pow(2, i + 1)), 1, 1, 0),
+                    nn.Conv2d(int(input_filters / math.pow(2, i)), int(input_filters / math.pow(2, i + 1)), 1, 1, 0, bias=ENABLE_BIAS),
                     activation_fn))
             else:
                 if not is_final:
                     self.reductions.add_module("1x1_reduc_%d_%d" % (scale, i), nn.Sequential(
-                        nn.Conv2d(int(input_filters / math.pow(2, i)), int(input_filters / math.pow(2, i + 1)), 1, 1, 0)))
+                        nn.Conv2d(int(input_filters / math.pow(2, i)), int(input_filters / math.pow(2, i + 1)), 1, 1, 0, bias=ENABLE_BIAS)))
                 else:
                     self.reductions.add_module("1x1_reduc_%d_%d" % (scale, i), nn.Sequential(
-                        nn.Conv2d(int(input_filters / math.pow(2, i)), 1, 1, 1, 0), nn.Sigmoid()))
+                        nn.Conv2d(int(input_filters / math.pow(2, i)), 1, 1, 1, 0, bias=ENABLE_BIAS), nn.Sigmoid()))
 
     def forward(self, ip):
         return self.reductions(ip)
@@ -263,7 +261,7 @@ class bts_encoder(nn.Module):
 
     def forward(self, ip):
         _ = self.dense_feature_extractor(ip)
-        joint_input = (self.dense_features, self.dense_op_h2, self.dense_op_h4, self.dense_op_h8, self.dense_op_h16)
+        joint_input = (self.dense_features.relu(), self.dense_op_h2, self.dense_op_h4, self.dense_op_h8, self.dense_op_h16)
         return joint_input
 
 
@@ -284,17 +282,18 @@ class bts_decoder(nn.Module):
         self.upconv_h2 = UpscaleLayer(64, 32)  # 64 Filter
         self.upconv_h = UpscaleLayer(64, 32)  # 32 filter
 
-        self.conv_h4 = nn.Conv2d(161, 64, 3, 1, 1)  # 64 Filter
-        self.conv_h2 = nn.Conv2d(129, 64, 3, 1, 1)  # 64 Filter
-        self.conv_h1 = nn.Conv2d(36, 32, 3, 1, 1)
+        self.conv_h4 = nn.Conv2d(161, 64, 3, 1, 1, bias=ENABLE_BIAS)  # 64 Filter
+        self.conv_h2 = nn.Conv2d(129, 64, 3, 1, 1, bias=ENABLE_BIAS)  # 64 Filter
+        self.conv_h1 = nn.Conv2d(36, 32, 3, 1, 1, bias=ENABLE_BIAS)
 
         self.reduction1x1 = Reduction(1, 32, True)
 
-        self.final_conv = nn.Conv2d(32, 1, 3, 1, 1)
+        self.final_conv = nn.Conv2d(32, 1, 3, 1, 1, bias=ENABLE_BIAS)
 
     def forward(self, joint_input, focal):
         (dense_features, dense_op_h2, dense_op_h4, dense_op_h8, dense_op_h16) = joint_input
         upscaled_out = self.UpscaleNet(joint_input)
+
         dense_assp_out = self.DenseASSPNet(upscaled_out)
 
         upconv_h4 = self.upconv_h4(dense_assp_out)
@@ -342,7 +341,7 @@ class SilogLoss(nn.Module):
         target = target.reshape(-1)
 
         mask = (target > 1) & (target < 81)
-        masked_ip = torch.masked_select(ip, mask)
+        masked_ip = torch.masked_select(ip.float(), mask)
         masked_op = torch.masked_select(target, mask)
 
         log_diff = torch.log(masked_ip * ratio) - torch.log(masked_op * ratio)
@@ -357,8 +356,9 @@ class SilogLoss(nn.Module):
 class BtsController:
     def __init__(self, log_directory='run_1', logs_folder='tensorboard', backprop_frequency=1):
         self.bts = bts_model().float().to(device)
-        self.optimizer = optim.AdamW([{'params': self.bts.decoder.parameters(), "weight_decay": 1e-4},
-                                      {'params': self.bts.encoder.parameters(), "weight_decay": 1e-5}])
+        self.optimizer = torch.optim.AdamW([{'params': self.bts.encoder.parameters(), 'weight_decay': 1e-2},
+                                       {'params': self.bts.decoder.parameters(), 'weight_decay': 0}],
+                                      lr=1e-4, eps=1e-6)
 
         if USE_APEX:
             self.bts, self.optimizer = apex.amp.initialize(self.bts, self.optimizer, opt_level=APEX_OPT_LEVEL)
@@ -372,21 +372,44 @@ class BtsController:
 
         self.criterion = SilogLoss()
 
-        self.learning_rate_scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, 0.97)
+        self.learning_rate_scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, 0.95)
 
         self.current_epoch = 0
         self.last_loss = 0
         self.current_step = 0
 
-    def predict(self, input, is_channels_first=True, focal=715.0873):
-        # TODO automatically determine if is channels first, add "normalize" as argument
-        if is_channels_first:
-            tensor_input = torch.tensor(input).unsqueeze(-1).to(device).float().transpose(0, 3).transpose(2, 3).transpose(1, 2)
-        else:
-            tensor_input = torch.tensor(input).unsqueeze(-1).to(device).float().transpose(0, 3).transpose(1, 2).transpose(2, 3)
+    def eval(self):
+        self.bts = self.bts.eval()
 
-        model_output = self.bts(tensor_input, torch.tensor(focal).unsqueeze(0))[0][0].detach().cpu().transpose(0, 1).transpose(1, 2).squeeze(-1)
-        return model_output
+    def train(self):
+        self.bts = self.bts.train()
+
+    def predict(self, input, is_channels_first=True, focal=715.0873, normalize=False):
+        if normalize:
+            input = A.Compose([A.Normalize()])(**{"image": input})["image"]
+
+        if is_channels_first:
+            tensor_input = torch.tensor(input).unsqueeze(-1).to(device).float().transpose(0, 3).transpose(2,
+                                                                                                          3).transpose(
+                1, 2)
+        else:
+            tensor_input = torch.tensor(input).unsqueeze(-1).to(device).float().transpose(0, 3).transpose(1,
+                                                                                                          2).transpose(
+                2, 3)
+
+        shape_changed = False
+        org_shape = tensor_input.shape[2:]
+        if org_shape[0] % 32 != 0 or org_shape[1] % 32 != 0:
+            shape_changed = True
+            new_shape_y = round(org_shape[0] / 32) * 32
+            new_shape_x = round(org_shape[1] / 32) * 32
+            tensor_input = F.interpolate(tensor_input, (new_shape_y, new_shape_x), mode="bilinear")
+
+        model_output = self.bts(tensor_input, torch.tensor(focal).unsqueeze(0))[0][0].detach().unsqueeze(0)
+        if shape_changed:
+            model_output = F.interpolate(model_output, (org_shape[0], org_shape[1]), mode="nearest")
+
+        return model_output.cpu().squeeze()
 
     @staticmethod
     def depth_map_to_rgbimg(depth_map):
@@ -419,7 +442,7 @@ class BtsController:
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-        if self.current_step % 10 == 0:
+        if self.current_step % 100 == 0:
             self.writer.add_scalar("Loss", loss.item() * self.backprop_frequency / tensor_input.shape[0], self.current_step)
 
         if self.current_step % 1000 == 0:
