@@ -4,18 +4,24 @@ import BTS
 import torch
 import cv2
 import numpy as np
+from DepthVisualizer import DepthRenderer
+import argparse
+import sys
+import os
+import configs
 
-model_path = "models/btspytorch"
-dataset_path = "/media/navhkrin/Eren/Code/Tez/bts_eren/kitti"
+model_path = configs.MODEL_PATH
+dataset_path = configs.DATASET_PATH
 
-MAKE_VIDEO = True
-video_save_path = "video.avi"
+MAKE_VIDEO = configs.MAKE_VIDEO
+video_save_path = configs.VIDEO_SAVE_PATH
 
-DISPLAY_VIDEO = True
+DISPLAY_VIDEO = configs.DISPLAY_VIDEO
 
 dataloader = KittiDataLoader.KittiDataset(dataset_path, is_test=True)
 model = BTS.BtsController()
 model.load_model(model_path)
+model.eval()
 
 
 def Unnormalize(tensor, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
@@ -33,7 +39,7 @@ def CalculateLosses(pred, gt):
     gt = gt.reshape(-1)
 
     # Filtering, similar to the one used in official implementation
-    mask = (gt > 1e-3) & (gt < 80)
+    mask = torch.tensor((gt > 1e-3) & (gt < 80), dtype=torch.bool)
     masked_pred = torch.masked_select(pred, mask)
     masked_gt = torch.masked_select(gt, mask)
 
@@ -48,8 +54,19 @@ def CalculateLosses(pred, gt):
     return [silog_loss, rmse, rmse_log, abs_rel, sq_rel]
 
 
+VIDEO_RES = (1600, 1200)  #(1216, 352 * 2)
 if MAKE_VIDEO:
-    video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 24, (1216, 352 * 2))
+    video = cv2.VideoWriter('video2.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 24, VIDEO_RES)
+
+
+def predict(model, input, is_channels_first=True, focal=715.0873):
+    if is_channels_first:
+        tensor_input = torch.tensor(input).unsqueeze(-1).to("cuda").float().transpose(0, 3).transpose(2, 3).transpose(1, 2)
+    else:
+        tensor_input = torch.tensor(input).unsqueeze(-1).to("cuda").float().transpose(0, 3).transpose(1, 2).transpose(2, 3)
+
+    model_output = model(tensor_input, torch.tensor(focal).unsqueeze(0))[-1][0].detach().cpu().transpose(0, 1).transpose(1, 2).squeeze(-1)
+    return model_output
 
 losses = []
 
@@ -57,15 +74,23 @@ last_idx = 0
 for idx, item in enumerate(dataloader):
     if (item is None):
         break
-    result_raw = model.predict(item["image"])
 
+    result_raw = model.predict(item["image"], item["focal_length"])
     last_idx = idx
     label = item["label"][0]
     losses += [CalculateLosses(result_raw, label)]
 
-    result_vis = model.depth_map_to_rgbimg(result_raw)
     im_vis = np.asarray((Unnormalize(item["image"])*255).transpose(0, 1).transpose(1, 2), np.uint8)
+    # point_cloud = renderer.convert_depthmap_to_points(label, 1 * item["focal_length"].cpu().numpy(),
+    #                                                   im_vis)
+    # renderer.set_points(point_cloud)
+    # renderer.render(True)
+
+    result_vis = model.depth_map_to_rgbimg(result_raw)
     result = np.append(result_vis, im_vis, axis=0)
+    # result = im_vis
+
+    # result = renderer.get_rendered_frame()
     if MAKE_VIDEO:
         video.write(cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
     if DISPLAY_VIDEO:

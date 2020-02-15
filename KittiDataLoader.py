@@ -4,6 +4,7 @@ import os
 import torch
 from torch.utils.data import Dataset, DataLoader
 import albumentations as A
+from PIL import Image
 
 
 class KittiDataset(Dataset):
@@ -15,8 +16,9 @@ class KittiDataset(Dataset):
             A.RandomCrop(352, 704, True)
         ], additional_targets={"label": "image"})
 
+        # This is a placeholder, you can simply put augmentations inside the list below to apply transformations to test
+        # set
         self.test_transforms = A.Compose([
-            A.Crop(int((1224-1216)/2), int((370-352)/2), int((1224-1216)/2) + 1216, int((370-352)/2) + 352, True)
         ], additional_targets={"label": "image"})
 
         self.image_only_transforms = A.Compose([
@@ -43,6 +45,17 @@ class KittiDataset(Dataset):
         self.velodyne_path = "velodyne_points\data"
         
         self.label_images_path = os.path.join("proj_depth", "groundtruth", "image_03")
+
+        # Extracts focal length in pixels of cameras used in drives
+        self.drive_focal_lengths = {}
+        for drive_name in os.listdir(self.inputs_path):
+            calib_path = os.path.join(self.inputs_path, drive_name, "calib_cam_to_cam.txt")
+            calib = {}
+            with open(calib_path, encoding="utf8") as f:
+                for line in f:
+                    line_name, line_data = line.split(":")[:2]
+                    calib[line_name] = line_data.split(" ")
+            self.drive_focal_lengths[drive_name] = float(calib["P_rect_03"][1])
 
         # Get folder names of drives that will be used in training
         for drive in os.listdir(train_drives_path):
@@ -76,11 +89,12 @@ class KittiDataset(Dataset):
 
     def load_label_img(self, drive_path, drive_img):
         img_path = os.path.join(self.drive_labels_path, drive_path, self.label_images_path, drive_img)
-        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        img = np.expand_dims(img, axis=3)
+
+        depth_map = np.asarray(Image.open(img_path), np.float32)
+        depth_map = np.expand_dims(depth_map, axis=2) / 256.0
 
         self.last_input_path = img_path
-        return img
+        return depth_map
 
     def load_input_img(self, drive_path, drive_img):
         drive = drive_path.split("_drive_")[0]
@@ -92,11 +106,16 @@ class KittiDataset(Dataset):
         self.last_output_path = img_path
         return img
 
+    def crop_img(self, img):
+        height, width, channels = img.shape
+        top, left = int(height - 352), int((width - 1216) / 2)
+        return img[top:top+352, left:left+1216]
+
     def __getitem__(self, item):
         for drive_len, drive_path, drive_image_paths in self.drives:
             if (item < drive_len):
-                label_img = self.load_label_img(drive_path, drive_image_paths[item])
-                input_img = self.load_input_img(drive_path, drive_image_paths[item])
+                label_img = self.crop_img(self.load_label_img(drive_path, drive_image_paths[item]))
+                input_img = self.crop_img(self.load_input_img(drive_path, drive_image_paths[item]))
                 data = {'image': input_img, 'label': label_img}
 
                 if self.is_test:
@@ -111,6 +130,9 @@ class KittiDataset(Dataset):
 
                 data["image"] = torch.tensor(data["image"]).float().transpose(0, 2).transpose(1, 2)
                 data["label"] = torch.tensor(data["label"]).float().transpose(0, 2).transpose(1, 2)
+
+                drive = "_".join(drive_path.split("_")[:3])  # Extracts drive date from file path
+                data["focal_length"] = torch.tensor(self.drive_focal_lengths[drive])
                 return data
             else:
                 # Item isnt in this drive, search in next drive folder
@@ -120,6 +142,6 @@ class KittiDataset(Dataset):
         return self.total_len
 
 
-def KittiDataLoader(batch_size, dataset_folder):
-    dataset = KittiDataset(dataset_folder)
+def KittiDataLoader(batch_size, dataset_folder, is_test=False):
+    dataset = KittiDataset(dataset_folder, is_test)
     return torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
