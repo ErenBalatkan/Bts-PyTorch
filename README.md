@@ -49,4 +49,3 @@ dataset_path = "e://Code/Tez/bts_eren/kitti"
 ```
 
 Takes around 100 hours to train on GTX 1080.
-
